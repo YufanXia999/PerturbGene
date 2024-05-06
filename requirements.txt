@@ -1,0 +1,14 @@
+accelerate
+braceexpand
+datasets
+matplotlib<3.7
+scanpy==1.9.1
+scipy
+scikit-learn
+torch
+torchvision
+transformers
+numpy
+pandas<2.0
+wandb
+wheel
