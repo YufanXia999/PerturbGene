@@ -7,7 +7,6 @@ MODE = "PyCharm"  # change to any other string to get typical behavior (launchin
 # ##### PyCharm hotfix
 if MODE == "PyCharm":
     import os, sys
-    # os.chdir("/home/kevin/Documents/perturbgene")  # Only needed for Kevin because launching remotely
     os.chdir("..")
 
     sys.path.append(".")
