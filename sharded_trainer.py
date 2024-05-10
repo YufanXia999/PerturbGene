@@ -5,8 +5,8 @@ import torch
 import transformers
 from torch.utils.data import Dataset, DataLoader
 
-from data_utils import IterableAnnDataset, EvalJsonDataset
-from data_utils.data_collators import collate_fn_wrapper
+from perturbgene.data_utils import IterableAnnDataset, EvalJsonDataset
+from perturbgene.data_utils.data_collators import collate_fn_wrapper
 
 
 class ShardedTrainer(transformers.Trainer):

@@ -1,14 +1,14 @@
 cd ..
 CUDA_DEVICE_ORDER="PCI_BUS_ID" CUDA_VISIBLE_DEVICES=1 accelerate launch --mixed_precision=fp16 --num_processes=1 \
 --num_machines 1 --dynamo_backend no \
--m transformeromics.main \
+-m perturbgene.main \
 --bin_edges 0.1 \
---pretrained_model_path 'transformeromics/model_configs/distilbert_base.json' \
+--pretrained_model_path 'perturbgene/model_configs/distilbert_base.json' \
 --shard_size 10000 \
 --eval_data_paths '/home/shared_folder/TabulaSapiens/ranked/Tabula_Sapiens_ranked_47.h5ad' \
 --max_length 130 \
 --num_top_genes 128 \
---vocab_path 'transformeromics/data/phenotypic_tokens_map.json' \
+--vocab_path 'perturbgene/data/phenotypic_tokens_map.json' \
 --use_flash_attn \
 --per_device_eval_batch_size 256 \
 --dataloader_num_workers 4 \

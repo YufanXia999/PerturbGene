@@ -5,7 +5,7 @@ This improves the consistency and interpretation of the evaluation metrics withi
 
 ## Usage: 
 ```shell
-python -m transformeromics.data_generation.gen_eval_data --help
+python -m perturbgene.data_generation.gen_eval_data --help
 usage: gen_eval_data.py [-h] [--bin_edges BIN_EDGES [BIN_EDGES ...]]
                         [--bin_edges_path BIN_EDGES_PATH]
                         [--shard_size SHARD_SIZE] --eval_data_path

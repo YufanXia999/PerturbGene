@@ -51,7 +51,7 @@ def compute_general_metrics(flat_preds: np.ndarray, flat_labels: np.ndarray) -> 
     return metrics
 
 
-def mlm_metrics_wrapper(tokenizer, working_dir):
+def mlm_metrics_wrapper(tokenizer, working_dir: str = None):
     eval_iter = 0
 
     def compute_mlm_metrics(p: transformers.EvalPrediction):
@@ -86,7 +86,9 @@ def mlm_metrics_wrapper(tokenizer, working_dir):
         df_cm = pd.DataFrame(conf_matrix, index=label_names, columns=label_names)
         # # Save DataFrame to CSV
         nonlocal eval_iter
-        df_cm.to_csv(f'{working_dir}/confusion_matrix_{eval_iter}.csv')
+        if working_dir is not None:
+            df_cm.to_csv(f'{working_dir}/confusion_matrix_{eval_iter}.csv')
+
         eval_iter += 1
 
         for i, phenotypic_type in enumerate(tokenizer.config.included_phenotypes):
@@ -108,7 +110,7 @@ def mlm_metrics_wrapper(tokenizer, working_dir):
     return compute_mlm_metrics
 
 
-def cls_metrics_wrapper(tokenizer, working_dir):
+def cls_metrics_wrapper(tokenizer, working_dir: str = None):
     eval_iter = 0
 
     def compute_cls_metrics(p: transformers.EvalPrediction):
@@ -132,7 +134,9 @@ def cls_metrics_wrapper(tokenizer, working_dir):
         df_cm = pd.DataFrame(conf_matrix, index=label_names, columns=label_names)
         # # Save DataFrame to CSV
         nonlocal eval_iter
-        df_cm.to_csv(f'{working_dir}/confusion_matrix_{eval_iter}.csv')
+        if working_dir is not None:
+            df_cm.to_csv(f'{working_dir}/confusion_matrix_{eval_iter}.csv')
+
         eval_iter += 1
 
         return metrics

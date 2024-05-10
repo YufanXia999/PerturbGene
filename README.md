@@ -35,7 +35,7 @@ Also, they can be used as control tokens to create samples with different charac
 This approach has been fruitful in some models like T5 that uses control codes to generate samples with different characteristics.
 
 
-# The model
+## The model
 We use BERT as the base model for our encoding. BERT is a denoising model that is trained to predict the masked tokens in a sequence. 
 We use BERT to find out the complex interactions between genes using the task of denoising. For each sample in the dataset
 we mask some of the genes and we train the model to predict the masked genes. This way, the model learns the interactions between genes.
@@ -56,8 +56,6 @@ for models that are trained on one phenotype we have to set the value for
 other phenotypes to no_phenotype such as `no_sex`, `no_age`, `no_disease`, `no_tissue`, `no_cell_type`
 
 
-
-
 ## Installation
 Install gcc and g++:
 
@@ -73,3 +71,18 @@ sudo apt-get install nano
 
 
 The `max_length` should always be bigger than `n_highly_variable_genes` by two, in other words, max_length = n_highly_variable_genes + 2
+
+## Usage
+
+### Not PyCharm (e.g. `accelerate launch` from shell)
+Uncomment `MODE = ""` in `main.py`.
+
+### PyCharm
+Go to Run/Debug Configurations. 
+Change it to resemble ![PyCharm Config](./imgs/PyCharm_Config.png)
+
+My Script parameters are: ```--mixed_precision=fp16 --num_processes=1 --num_machines 1 --dynamo_backend no main.py --bin_edges 0.1 --pretrained_model_path perturbgene/model_configs/distilbert_base.json --shard_size 10000 --eval_data_paths /home/shared_folder/TabulaSapiens/ranked/Tabula_Sapiens_ranked_47.h5ad --max_length 1024 --num_top_genes 58604 --vocab_path perturbgene/data/phenotypic_tokens_map.json --included_phenotypes cell_type sex tissue --use_flash_attn --per_device_eval_batch_size 256 --dataloader_num_workers 4 --output_dir output_v10_base_gene000 mlm --gene_mask_prob 0.00 --phenotype_mask_prob 0.5 --train_data_paths /home/shared_folder/TabulaSapiens/ranked/Tabula_Sapiens_ranked_{0..43}.h5ad --num_hidden_layers 12 --num_attention_heads 12 --per_device_train_batch_size 128 --learning_rate 1e-4 --weight_decay 5e-2 --warmup_ratio 0.1 --num_train_epochs 10 --eval_steps 1000 --save_steps 8000```
+
+My Environment variables are: ```PYTHONUNBUFFERED=1;CUDA_DEVICE_ORDER=PCI_BUS_ID;CUDA_VISIBLE_DEVICES=1```
+
+You should not need to worry about the Python Interpreter, Working directory, or Path mappings when running locally.

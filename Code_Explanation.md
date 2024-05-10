@@ -1,11 +1,11 @@
 # Code Organization - March 11
 
 ## Setup notes:
-To allow absolute imports, we treat `transformeromics` as a module and require all files 
-to be run from the parent of the `transformeromics` directory,
-as `python -m transformeromics.<script_name>`. Two example usages in `train_cls.sh` and `train_mlm.sh`.
+To allow absolute imports, we treat `perturbgene` as a module and require all files 
+to be run from the parent of the `perturbgene` directory,
+as `python -m perturbgene.<script_name>`. Two example usages in `train_cls.sh` and `train_mlm.sh`.
 
-For more usage details, see `python -m transformeromics.main -h`.
+For more usage details, see `python -m perturbgene.main -h`.
 
 
 ## Important files:
@@ -67,7 +67,7 @@ The main script, see [Setup notes](#setup-notes).
 
 ## Vast.ai Setup:
 
-Starting in the `transformeromics` directory,
+Starting in the `perturbgene` directory,
 ```bash
 sudo apt-get install gcc g++
 sudo apt-get install nano

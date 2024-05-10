@@ -2,14 +2,12 @@ import json
 
 import accelerate
 import numpy as np
-import pandas as pd
 import scipy
 import torch
 
-from .data_collators import torch_mask_tokens
 from .read import read_h5ad_file
 from .tokenization import GeneTokenizer, phenotype_to_token
-from configs import BaseConfig, TrainClassificationConfig
+from perturbgene.configs import BaseConfig
 
 
 class IterableAnnDataset(torch.utils.data.IterableDataset):
@@ -46,7 +44,6 @@ class IterableAnnDataset(torch.utils.data.IterableDataset):
         self.config = config
         self.tokenizer = GeneTokenizer(config)
 
-        # if isinstance(self.config, TrainClassificationConfig):  # better type-hints
         if self.config.subcommand == "cls":
             self.cls = True
             with open(config.vocab_path, "r") as f:  # also `self.tokenizer.phenotypic_tokens_map`, but this is cleaner

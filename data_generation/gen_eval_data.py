@@ -5,9 +5,9 @@ import os
 from braceexpand import braceexpand
 from tqdm.auto import tqdm
 
-from data_utils import IterableAnnDataset
-from data_utils.data_collators import torch_mask_tokens
-from eval_utils import set_seed
+from perturbgene.data_utils import IterableAnnDataset
+from perturbgene.data_utils.data_collators import torch_mask_tokens
+from perturbgene.eval_utils import set_seed
 
 
 def parse_data_args(args: list[str] | None = None) -> argparse.Namespace:

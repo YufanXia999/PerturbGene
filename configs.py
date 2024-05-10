@@ -46,8 +46,10 @@ class BaseConfig:
 
         assert (self.pretrained_model_path is not None) ^ (self.model_arch is not None), \
             "Expected exactly one of --pretrained_model_path and --model_arch to be specified."
-        for path in (self.bin_edges_path, self.pretrained_model_path, self.vocab_path):
+        for path in (self.bin_edges_path, self.vocab_path):
             assert path is None or os.path.isfile(path), f"{path=} is not a file."
+
+        assert path is None or os.path.exists(self.pretrained_model_path)
 
         # could also try opening to check it's a JSON file
         assert self.vocab_path.lower().endswith(".json"), f"Expected json path but got {self.vocab_path=}"
@@ -88,6 +90,7 @@ class TrainMLMConfig(TrainConfig):
 class TrainClassificationConfig(TrainConfig):
     phenotype_category: str
     binary_label: str
+    balanced_dataset: bool
 
     def __post_init__(self):
         """ Classification-specific sanity checks """
@@ -176,6 +179,9 @@ def parse_args(args: list[str] = None) -> BaseConfig:
                                help="If specified, this would be one of the labels for the `phenotype_category`. "
                                     "Then, binary classification (one vs. rest) will be performed "
                                     "instead of multi-class classification.")
+    cls_subparser.add_argument("--balanced_dataset", action="store_true",
+                               help="If specified, will not weight classes in cross entropy loss "
+                                    "since assuming they are already balanced.")
 
     args = parser.parse_args(args)
     if args.subcommand is None:

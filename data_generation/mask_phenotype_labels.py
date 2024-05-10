@@ -10,7 +10,7 @@ import os
 import torch
 from tqdm.auto import tqdm
 
-from data_utils import GeneTokenizer
+from perturbgene.data_utils import GeneTokenizer
 
 
 unmasked_json_path = "perturbgene/data/validation_data/seq1024_mlm_gene015_pheno050_shard0_v0.json"

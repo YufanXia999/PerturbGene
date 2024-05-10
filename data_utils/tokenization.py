@@ -5,7 +5,7 @@ import numpy as np
 import scipy.sparse
 import torch
 
-from configs import BaseConfig
+from perturbgene.configs import BaseConfig
 
 
 def _prepend_bin(arr):

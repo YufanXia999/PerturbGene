@@ -2,8 +2,23 @@
 Supports training (either MLM or classification). Inference not implemented yet.
 Training works across multiple GPUs on a single machine.
 """
+MODE = "PyCharm"  # change to any other string to get typical behavior (launching from shell with `accelerate`)
+# MODE = ""
+# ##### PyCharm hotfix
+if MODE == "PyCharm":
+    import os, sys
+    # os.chdir("/home/kevin/Documents/perturbgene")  # Only needed for Kevin because launching remotely
+    os.chdir("..")
+
+    sys.path.append(".")
+
+    # import perturbgene
+    # sys.modules["transformeromics"] = perturbgene
+# #####
+
 import json
 import os
+import pickle
 
 import accelerate
 import torch
@@ -11,13 +26,13 @@ import torch.nn as nn
 import transformers
 import wandb
 
-from configs import parse_args, TrainConfig, TrainMLMConfig
-from data_utils import (
+from perturbgene.configs import parse_args, TrainConfig
+from perturbgene.data_utils import (
     DataCollatorForPhenotypicMLM, GeneTokenizer, IterableAnnDataset, EvalJsonDataset, collate_fn_wrapper
 )
-from eval_utils import preprocess_logits_argmax, mlm_metrics_wrapper, cls_metrics_wrapper, set_seed
-from model import GeneBertForPhenotypicMLM, GeneBertForClassification
-from sharded_trainer import ShardedTrainer
+from perturbgene.eval_utils import preprocess_logits_argmax, mlm_metrics_wrapper, cls_metrics_wrapper, set_seed
+from perturbgene.model import GeneBertForPhenotypicMLM, GeneBertForClassification
+from perturbgene.sharded_trainer import ShardedTrainer
 
 
 if __name__ == "__main__":
@@ -26,16 +41,38 @@ if __name__ == "__main__":
     ##################################################
     set_seed(42)
 
-    # config = parse_args()
-    config = TrainMLMConfig(
-        subcommand='mlm', bin_edges=[0.1], bin_edges_path=None,
-        pretrained_model_path='model_configs/distilbert_base.json', model_arch=None, shard_size=10000,
-        eval_data_paths=['/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_47.h5ad'], max_length=1024, num_top_genes=58604,
-        vocab_path='data/phenotypic_tokens_map.json',
-        included_phenotypes=['cell_type', 'sex', 'tissue'],
-        use_flash_attn=True, output_dir='output_v10_base_gene000',
-        per_device_eval_batch_size=256, dataloader_num_workers=4, auto_find_batch_size=False, train_data_paths=['/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_0.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_1.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_2.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_3.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_4.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_5.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_6.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_7.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_8.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_9.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_10.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_11.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_12.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_13.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_14.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_15.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_16.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_17.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_18.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_19.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_20.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_21.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_22.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_23.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_24.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_25.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_26.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_27.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_28.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_29.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_30.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_31.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_32.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_33.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_34.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_35.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_36.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_37.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_38.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_39.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_40.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_41.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_42.h5ad', '/home/rohola/TabulaSapiens/ranked/Tabula_Sapiens_ranked_43.h5ad'], num_hidden_layers=12, num_attention_heads=12, num_train_epochs=10, per_device_train_batch_size=128, gradient_accumulation_steps=1, learning_rate=0.0001, weight_decay=0.05, warmup_ratio=0.1, save_steps=8000, eval_steps=1000, gene_mask_prob=0.0, phenotype_mask_prob=0.5)
-
+    # if MODE == "PyCharm":
+    #     args = """
+    #         --bin_edges 0.1 \
+    #         --pretrained_model_path 'perturbgene/model_configs/distilbert_base.json' \
+    #         --shard_size 10000 \
+    #         --eval_data_paths '/home/shared_folder/TabulaSapiens/ranked/Tabula_Sapiens_ranked_47.h5ad' \
+    #         --max_length 1024 \
+    #         --num_top_genes 58604 \
+    #         --vocab_path 'perturbgene/data/phenotypic_tokens_map.json' \
+    #         --included_phenotypes cell_type sex tissue \
+    #         --use_flash_attn \
+    #         --per_device_eval_batch_size 256 \
+    #         --dataloader_num_workers 4 \
+    #         --output_dir 'output_v10_base_gene000' \
+    #         mlm \
+    #         --gene_mask_prob 0.00 \
+    #         --phenotype_mask_prob 0.5 \
+    #         --train_data_paths '/home/shared_folder/TabulaSapiens/ranked/Tabula_Sapiens_ranked_{0..43}.h5ad' \
+    #         --num_hidden_layers 12 \
+    #         --num_attention_heads 12 \
+    #         --per_device_train_batch_size 128 \
+    #         --learning_rate 1e-4 \
+    #         --weight_decay 5e-2 \
+    #         --warmup_ratio 0.1 \
+    #         --num_train_epochs 10 \
+    #         --eval_steps 1000 \
+    #         --save_steps 8000
+    #     """.strip().replace("'", "").replace("\"", "").split()
+    #     # print(args)
+    #     config = parse_args(args)
+    # else:
+    config = parse_args()
 
     distributed_state = accelerate.PartialState()
 
@@ -58,15 +95,25 @@ if __name__ == "__main__":
         # Haven't actually checked if .update() is the same as the normal dict update
         os.environ.update({  # https://docs.wandb.ai/guides/track/environment-variables
             "WANDB_PROJECT": "genomics",
-            "WANDB_NAME": f"A100_{config.max_length}_MLM{config.gene_mask_prob*100:03.0f}_2bins_Base_v4"
+            "WANDB_NAME": f"A100_{config.max_length}_MLM{config.gene_mask_prob*100:03.0f}_2bins_Base_v4"  # TODO: less hardcoding
             if config.subcommand == "mlm"
             else f"A100_{config.max_length}_CLS_{config.phenotype_category}_"
-                 f"{config.binary_label[1:-1] if config.binary_label is not None else None}_Base_v0",
+                 f"{config.binary_label[1:-1] if config.binary_label is not None else None}_Small_v0",
             "WANDB_LOG_MODEL": "false",
-            # "WANDB_RUN_GROUP": "cls-vasc-A100",
-            "WANDB_RUN_GROUP": "mlm-tests-edelman",
+            # "WANDB_RUN_GROUP": "mlm-tests-edelman",
+            "WANDB_RUN_GROUP": "cls-lung-A100",
             "WANDB-NOTES": "0.5 label smoothing, weighted classes",
         })
+
+        working_dir = os.path.join(
+            "perturbgene",
+            f"{config.output_dir}_{config.max_length}_{config.subcommand}_bins{len(config.bin_edges)}"
+        )
+
+        # os.makedirs(working_dir, exist_ok=False)  # could be True if you want to overwrite_output_dir
+        os.makedirs(working_dir, exist_ok=True)  # could be True if you want to overwrite_output_dir
+        with open(os.path.join(working_dir, "tokenizer.pkl"), "wb") as f:
+            pickle.dump(tokenizer, f)
 
         # Divide `config.train_data_paths` across the processes.
         # Currently assuming that `len(train_paths)` is a perfect multiple of num_processes to make this easier.
@@ -77,8 +124,6 @@ if __name__ == "__main__":
         process_train_paths = config.train_data_paths[shards_per_process * rank: shards_per_process * (rank + 1)]
 
         train_dataset = IterableAnnDataset(process_train_paths, config)
-
-        working_dir = f"{config.output_dir}_{config.max_length}_{config.subcommand}_bins{len(config.bin_edges)}"
 
         # Load the configuration for a model
         if config.pretrained_model_path is not None:  # load a model with pre-trained weights
@@ -95,7 +140,7 @@ if __name__ == "__main__":
         model_config.pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
         model_kwargs = {"attn_implementation": "flash_attention_2"} if config.use_flash_attn else dict()
 
-        with open("data/phenotype_tokens_freqs.json", "r") as f:  # TODO: don't hardcode
+        with open("perturbgene/data/phenotype_tokens_freqs.json", "r") as f:  # TODO: don't hardcode
             phenotype_tokens_freqs = json.load(f)
 
         # Load relevant `model`, `data_collator`, and ` eval_metric`
@@ -114,7 +159,7 @@ if __name__ == "__main__":
             else:
                 mlm_loss_fct = nn.CrossEntropyLoss(label_smoothing=0.5)
 
-            model = GeneBertForPhenotypicMLM._from_config(model_config, mlm_loss_fct=mlm_loss_fct, torch_dtype=torch.float16, **model_kwargs)
+            model = GeneBertForPhenotypicMLM._from_config(model_config, mlm_loss_fct=mlm_loss_fct, **model_kwargs)
             data_collator = DataCollatorForPhenotypicMLM(
                 tokenizer=tokenizer, mlm=True, mlm_probability=config.gene_mask_prob,
                 phenotype_mask_prob=config.phenotype_mask_prob
@@ -126,15 +171,17 @@ if __name__ == "__main__":
             model_config.problem_type = "single_label_classification"  # should be inferred anyway
 
             phenotype_cat_freqs = phenotype_tokens_freqs[config.phenotype_category]
-            pos_freq = phenotype_cat_freqs[config.binary_label]
             if config.binary_label is not None:
+                pos_freq = phenotype_cat_freqs[config.binary_label]
                 cls_loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([1 / (1 - pos_freq), 1 / pos_freq],
                                                                        dtype=torch.float), label_smoothing=0.1 * pos_freq)
+            elif config.balanced_dataset:
+                cls_loss_fct = nn.CrossEntropyLoss()
             else:
                 cls_loss_fct = nn.CrossEntropyLoss(
                     weight=torch.tensor([1 / phenotype_cat_freqs[label]
                                          for label in train_dataset.phenotype_category_labels],
-                                        dtype=torch.float), label_smoothing=0.1 * pos_freq
+                                        dtype=torch.float), label_smoothing=0.1
                 )
 
             model = GeneBertForClassification._from_config(model_config, cls_loss_fct=cls_loss_fct, **model_kwargs)
@@ -154,7 +201,7 @@ if __name__ == "__main__":
 
         training_args = transformers.TrainingArguments(
             output_dir=working_dir,
-            overwrite_output_dir=True,
+            overwrite_output_dir=False,  # saving tokenizer first
             num_train_epochs=config.num_train_epochs,
             per_device_train_batch_size=config.per_device_train_batch_size,
             per_device_eval_batch_size=config.per_device_eval_batch_size,
@@ -179,7 +226,6 @@ if __name__ == "__main__":
             accelerator_config={"dispatch_batches": False},
             dataloader_pin_memory=True,
             dataloader_persistent_workers=True,
-            fp16=True,
         )
 
         trainer = ShardedTrainer(
