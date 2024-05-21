@@ -142,21 +142,19 @@ if __name__ == "__main__":
 
         # Load relevant `model`, `data_collator`, and ` eval_metric`
         if config.subcommand == "mlm":
-            if len(config.included_phenotypes) > 0:
-                weights_per_class = torch.zeros(tokenizer.vocab_size)
-                # On average, a sequence will have `len(config.included_phenotypes) * config.phenotype_mask_prob` masked
-                # phenotype tokens and approximately `config.max_length * config.gene_mask_prob` masked genes
-                # (approximation because there are special/phenotype tokens, like padding)
-                GENE_WEIGHT = 1 / (config.max_length * config.gene_mask_prob) if config.gene_mask_prob > 0 else 0
-                PHENOTYPE_WEIGHT = 1 / (len(config.included_phenotypes) * config.phenotype_mask_prob)
-                weights_per_class[tokenizer.get_phenotypic_tokens_mask(torch.arange(tokenizer.vocab_size))] \
-                    = PHENOTYPE_WEIGHT
-                weights_per_class[tokenizer.get_phenotypic_tokens_mask(torch.arange(tokenizer.vocab_size))] \
-                    = GENE_WEIGHT
-                weights_per_class[tokenizer.get_gene_tokens_mask(torch.arange(tokenizer.vocab_size))] = GENE_WEIGHT
-                mlm_loss_fct = nn.CrossEntropyLoss(weight=weights_per_class, label_smoothing=0.5)
-            else:
-                mlm_loss_fct = nn.CrossEntropyLoss(label_smoothing=0.5)
+            # if len(config.included_phenotypes) > 0:
+            #     weights_per_class = torch.zeros(tokenizer.vocab_size)
+            #     # On average, a sequence will have `len(config.included_phenotypes) * config.phenotype_mask_prob` masked
+            #     # phenotype tokens and approximately `config.max_length * config.gene_mask_prob` masked genes
+            #     # (approximation because there are special/phenotype tokens, like padding)
+            #     GENE_WEIGHT = 1 / (config.max_length * config.gene_mask_prob) if config.gene_mask_prob > 0 else 0
+            #     PHENOTYPE_WEIGHT = 1 / (len(config.included_phenotypes) * config.phenotype_mask_prob)
+            #     weights_per_class[tokenizer.get_phenotypic_tokens_mask(torch.arange(tokenizer.vocab_size))] \
+            #         = PHENOTYPE_WEIGHT
+            #     weights_per_class[tokenizer.get_gene_tokens_mask(torch.arange(tokenizer.vocab_size))] = GENE_WEIGHT
+            #     mlm_loss_fct = nn.CrossEntropyLoss(weight=weights_per_class, label_smoothing=0.5)
+            # else:
+            mlm_loss_fct = nn.CrossEntropyLoss(label_smoothing=0.5)
 
             model = GeneBertForPhenotypicMLM._from_config(model_config, mlm_loss_fct=mlm_loss_fct, **model_kwargs)
             data_collator = DataCollatorForPhenotypicMLM(
