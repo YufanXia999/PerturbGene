@@ -25,7 +25,7 @@ class BaseConfig:
     num_top_genes: int
 
     vocab_path: str
-    included_phenotypes: list[str]  # TODO: assert choices
+    included_phenotypes: list[str]
 
     use_flash_attn: bool
 
@@ -139,8 +139,9 @@ def parse_args(args: list[str] = None) -> BaseConfig:
     parser.add_argument("--vocab_path", type=str, required=True,
                         help="Path to the JSON file mapping token_types to tokens.")
     parser.add_argument("--included_phenotypes", nargs="*", type=str,
-                        help="The phenotypes to include in the model input. The current types are: "
-                             "'cell_type sex tissue'. (Also 'development_stage' and 'disease' but not recommended.)")
+                        choices=["cell_type", "sex", "tissue", "development_stage", "disease"],  # this should be extended for new categories
+                        help="The phenotypes to include in the model input. "
+                             "'development_stage' and 'disease' are not used as of May 21st.")
 
     parser.add_argument("--use_flash_attn", action="store_true",
                         help="Whether to use Flash Attention 2. If true, also expects `fp16`.")

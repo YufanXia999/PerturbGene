@@ -38,6 +38,7 @@ def collate_fn_wrapper(tokenizer: GeneTokenizer, pad_to_multiple_of=None):
             (and optionally) "labels": torch.Tensor of size (1,)
         }
         """
+        assert False, {k: v.size() for k, v in examples[0].items()}
         all_keys = examples[0].keys()  # assuming all examples have the same keys, is verified later
         assert all(key in all_keys for key in SEQ_KEYS)  # TODO: create attention_mask if missing
         assert ALL_POSSIBLE_KEYS.issuperset(all_keys), f"Unexpected keys: {all_keys - ALL_POSSIBLE_KEYS=}"

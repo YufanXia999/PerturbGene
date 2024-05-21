@@ -97,7 +97,6 @@ class GeneTokenizer:
         # Distinct token_type_id for each phenotype token
         token_type_ids.extend([1 + self.phenotypic_types.index(phenotypic_type)
                                for phenotypic_type in self.config.included_phenotypes])
-        assert len(token_type_ids) == 1 + len(self.config.included_phenotypes)  # TODO: remove
 
         # e.g. gene0 gene100 ... gene57991
         bin_ids, gene_ids = self._bin_genes(cell.X)
@@ -146,7 +145,6 @@ class GeneTokenizer:
             nonzero_indices = nonzero_indices[sorted_indices]
             indexed_data = indexed_data[sorted_indices]
 
-        assert np.all(nonzero_indices[:-1] <= nonzero_indices[1:])  # TODO: remove
         gene_expr_bins = np.digitize(indexed_data, self.config.bin_edges)  # bin gene expression values
         expressed_genes_mask = np.flatnonzero(gene_expr_bins)  # only 1 dim, used to filter out low expression genes
         return (gene_expr_bins[expressed_genes_mask],
@@ -201,4 +199,10 @@ class GeneTokenizer:
 
     @property
     def vocab_size(self) -> int:
+        """ Number of unique `input_ids` """
         return len(self.flattened_tokens)
+
+    @property
+    def type_vocab_size(self) -> int:
+        """ Number of unique `token_type_ids` """
+        return self.gene_token_type_offset + self.config.num_top_genes

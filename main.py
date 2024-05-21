@@ -2,21 +2,18 @@
 Supports training (either MLM or classification). Inference not implemented yet.
 Training works across multiple GPUs on a single machine.
 """
-MODE = "PyCharm"  # change to any other string to get typical behavior (launching from shell with `accelerate`)
-# MODE = ""
-# ##### PyCharm hotfix
-if MODE == "PyCharm":
-    import os, sys
+import os
+
+
+if os.environ.get("LAUNCH_FROM_PYCHARM") == "1":
+    print("Changing directory and PYTHONPATH for PyCharm")
+    import sys
     os.chdir("..")
 
     sys.path.append(".")
 
-    # import perturbgene
-    # sys.modules["transformeromics"] = perturbgene
-# #####
 
 import json
-import os
 import pickle
 
 import accelerate
@@ -135,7 +132,7 @@ if __name__ == "__main__":
         model_config.num_attention_heads = config.num_attention_heads
         model_config.max_position_embeddings = config.max_length
         model_config.vocab_size = tokenizer.vocab_size  # vocab_size and type_vocab_size determine model embedding sizes
-        model_config.type_vocab_size = tokenizer.gene_token_type_offset + config.num_top_genes  # TODO: less hardcoding
+        model_config.type_vocab_size = tokenizer.type_vocab_size
         model_config.pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
         model_kwargs = {"attn_implementation": "flash_attention_2"} if config.use_flash_attn else dict()
 
