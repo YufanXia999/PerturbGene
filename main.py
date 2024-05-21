@@ -8,7 +8,7 @@ import os
 if os.environ.get("LAUNCH_FROM_PYCHARM") == "1":
     print("Changing directory and PYTHONPATH for PyCharm")
     import sys
-    os.chdir("..")
+    # os.chdir("..")
 
     sys.path.append(".")
 
@@ -21,6 +21,7 @@ import torch
 import torch.nn as nn
 import transformers
 import wandb
+
 
 from perturbgene.configs import parse_args, TrainConfig
 from perturbgene.data_utils import (
@@ -150,6 +151,8 @@ if __name__ == "__main__":
                 PHENOTYPE_WEIGHT = 1 / (len(config.included_phenotypes) * config.phenotype_mask_prob)
                 weights_per_class[tokenizer.get_phenotypic_tokens_mask(torch.arange(tokenizer.vocab_size))] \
                     = PHENOTYPE_WEIGHT
+                weights_per_class[tokenizer.get_phenotypic_tokens_mask(torch.arange(tokenizer.vocab_size))] \
+                    = GENE_WEIGHT
                 weights_per_class[tokenizer.get_gene_tokens_mask(torch.arange(tokenizer.vocab_size))] = GENE_WEIGHT
                 mlm_loss_fct = nn.CrossEntropyLoss(weight=weights_per_class, label_smoothing=0.5)
             else:
