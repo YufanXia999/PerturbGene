@@ -1,4 +1,4 @@
-# Transformeromics
+# Transformer for omics
 
 ## Setup:
 
