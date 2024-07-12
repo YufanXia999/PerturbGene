@@ -6,7 +6,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 
 from perturbgene.configs import BaseConfig
 from perturbgene.data_utils.tokenization import phenotype_to_token, GeneTokenizer
-from perturbgene.model import GeneBertForPhenotypicMLM, GeneBertForClassification
+from perturbgene.model import GeneBertForPhenotypicMLM, GeneBertForClassification, GeneBertModel
 
 
 def get_inference_config(
@@ -104,3 +104,30 @@ def mlm_for_phenotype_cls(cell: AnnData, phenotype_category: str, model: GeneBer
     prepared_cell["input_ids"][phenotype_ind] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
     output = test_cell(prepared_cell, model, data_collator)
     return output.logits.argmax(dim=-1).squeeze(0)[phenotype_ind].item()
+
+def get_gene_embedding(cell: AnnData, model: GeneBertModel, 
+                       tokenizer: GeneTokenizer, data_collator: Callable, 
+                       gene_name: str = None) -> torch.tensor:
+    """
+    Getting Inference from a pre-trained Bert model and returning the gene embedding
+
+    Args:
+        cell: AnnData object with n_obs = 1
+        model: passed to `test_cell`
+        tokenizer: passed to `prepare_cell`
+        data_collator: passed to `test_cell`
+        gene_name: the name of gene you want to get in AnnData object --> assume is str and is saved in var feature_name
+
+    Returns:
+        the whole cell embedding or if gene_name is specify, the embedding of that gene
+    """
+
+    prepared_cell = prepare_cell(cell, "mlm", tokenizer)
+    batched_cell = data_collator([prepared_cell])
+    with torch.no_grad():
+        output = model(**{key: val.to(model.device) for key, val in batched_cell.items()}, output_hidden_states=True)
+    if gene_name is not None:
+        cell_idx = tokenizer.genes_start_ind + 1 + cell.var.index.get_loc(cell.var.index[cell.var['feature_name'] == gene_name][0])
+        return output.last_hidden_state[:,torch.nonzero(batched_cell["token_type_ids"] == cell_idx)[0,1]]
+    else:
+        return output.last_hidden_state
