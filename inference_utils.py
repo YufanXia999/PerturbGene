@@ -105,9 +105,9 @@ def mlm_for_phenotype_cls(cell: AnnData, phenotype_category: str, model: GeneBer
     output = test_cell(prepared_cell, model, data_collator)
     return output.logits.argmax(dim=-1).squeeze(0)[phenotype_ind].item()
 
-def get_gene_embedding(cell: AnnData, model: GeneBertModel, 
+def get_embedding(cell: AnnData, model: GeneBertModel, 
                        tokenizer: GeneTokenizer, data_collator: Callable, 
-                       gene_name: str = None) -> torch.tensor:
+                       name: str = None) -> torch.tensor:
     """
     Getting Inference from a pre-trained Bert model and returning the gene embedding
 
@@ -116,18 +116,21 @@ def get_gene_embedding(cell: AnnData, model: GeneBertModel,
         model: passed to `test_cell`
         tokenizer: passed to `prepare_cell`
         data_collator: passed to `test_cell`
-        gene_name: the name of gene you want to get in AnnData object --> assume is str and is saved in var feature_name
+        name: the name of gene/pheotype label you want to get in AnnData object --> assume is str
 
     Returns:
-        the whole cell embedding or if gene_name is specify, the embedding of that gene
+        the whole cell embedding or if gene_name is specified, the embedding of that gene, or the phenotype embedding
     """
 
     prepared_cell = prepare_cell(cell, "mlm", tokenizer)
     batched_cell = data_collator([prepared_cell])
     with torch.no_grad():
         output = model(**{key: val.to(model.device) for key, val in batched_cell.items()}, output_hidden_states=True)
-    if gene_name is not None:
-        cell_idx = tokenizer.genes_start_ind + 1 + cell.var.index.get_loc(cell.var.index[cell.var['feature_name'] == gene_name][0])
+    if name not in tokenizer.config.included_phenotypes and name is not None:
+        cell_idx = tokenizer.genes_start_ind + 1 + cell.var.index.get_loc(cell.var.index[cell.var['feature_name'] == name][0])
         return output.last_hidden_state[:,torch.nonzero(batched_cell["token_type_ids"] == cell_idx)[0,1]]
+    elif name in tokenizer.config.included_phenotypes and name is not None:
+        phenotype_ind = 1 + tokenizer.config.included_phenotypes.index(name)
+        return output.last_hidden_state[:,phenotype_ind]
     else:
         return output.last_hidden_state
