@@ -129,12 +129,14 @@ def get_embedding(cell: AnnData, model: GeneBertModel,
     if name not in tokenizer.config.included_phenotypes and name is not None:
         gene_idx_in_adata = cell.var.index.get_loc(cell.var.index[cell.var['feature_name'] == name][0])
         gex = cell.X.todense()[0, gene_idx_in_adata]
-        if gex == 0:
-            print(f"The expression of this gene in this cell is {gex}")
+        #print(f"The expression of {name} in this cell is {gex}")
+        if gex < 0.1:
+            return
+        elif (gene_idx_in_adata + tokenizer.genes_start_ind) not in batched_cell["token_type_ids"]:
+            print(f"The expression of {name} in this cell is {gex} but has no embedding.")
             return
         else:
             gene_idx_in_tokens = torch.nonzero(batched_cell["token_type_ids"] == (gene_idx_in_adata + tokenizer.genes_start_ind))[0,1]
-            print(f"The expression of this gene in this cell is {gex}")
             return output.last_hidden_state[:,gene_idx_in_tokens]
     elif name in tokenizer.config.included_phenotypes and name is not None:
         phenotype_ind = 1 + tokenizer.config.included_phenotypes.index(name)
