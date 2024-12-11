@@ -9,7 +9,8 @@ import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.stats import pearsonr
 import pandas as pd
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, zscore
+
 
 def label_to_float(label):
     label = label.replace("_"," ").replace("-",' ')
@@ -32,16 +33,14 @@ def label_to_float(label):
     return -1.0
 
 def cal_z_score(ground_truth, predictions, cal_r = True):
-    cal_r = None
+    r = None
     if cal_r:
         # Calculate Pearson correlation
         r, _ = pearsonr(ground_truth, predictions)
 
     # Calculate the z-scored age gap - (age gap - mean of age gap)/sd of age gap
     age_gap = predictions - ground_truth
-    mean_age_gap = np.mean(age_gap)
-    std_age_gap = np.std(age_gap)
-    z_scored_age_gap = (age_gap - mean_age_gap) / std_age_gap
+    z_scored_age_gap = zscore(age_gap)
 
     return {
         "ground_truth": ground_truth,
@@ -49,30 +48,6 @@ def cal_z_score(ground_truth, predictions, cal_r = True):
         "z_score":z_scored_age_gap,
         "r_value":r
     }
-
-def plot_z_score(data_dict, fig_name = "plots/age_prediction_z_score.png",show_fig=False):
-    ground_truth = data_dict["ground_truth"]
-    prediction = data_dict["prediction"]
-    z_scored_age_gap = data_dict["z_score"]
-    r = data_dict["r_value"]
-
-    plt.figure(figsize=(8, 6))
-    sns.scatterplot(x=ground_truth, y=prediction, hue=z_scored_age_gap, palette='coolwarm', edgecolor='k', alpha=0.6, legend=False)
-    plt.plot([ground_truth.min(), ground_truth.max()], [ground_truth.min(), ground_truth.max()], 'k--', lw=2)
-    norm = plt.Normalize(z_scored_age_gap.min(), z_scored_age_gap.max())
-    sm = plt.cm.ScalarMappable(cmap="coolwarm", norm=norm)
-    sm.set_array([])
-    plt.colorbar(sm, label='z-scored age gap')
-    plt.xlabel('chronological age',fontsize=18)
-    plt.ylabel('predicted age',fontsize=18)
-    plt.title(f'age prediction',fontsize=18)
-    plt.text(0.05, 0.95, f'r = {r:.2f}', transform=plt.gca().transAxes, 
-            fontsize=18, verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="black"))
-    plt.savefig(fig_name, dpi=300, bbox_inches='tight') 
-    if show_fig:
-        plt.show()
-    else:
-        plt.close()
 
 def cal_cosine_sim(matrixA, matrixB=None, format="pairweise"): # choose from pariweise, general
     # calculate pairweise cosine similarity, e.g. one cell's cell type embedding with its own age embedding
@@ -170,3 +145,48 @@ def sim_gene_youngest(matrix_gene, age_group_list, ref_age = None, age_order = N
 def sim_gene_each_group(matrix_gene, age_group_list, age_order = None):
     assert age_group_list is not None
     return cal_sim_between_two(matrix_gene, matrix_ref=None, age_group_list = age_group_list, age_order=age_order, by_age_group = True, format="general")
+
+def top_n_genes_by_age(sim_gene_age_dict: dict, age_counts_for_tissue: dict, threshold=0.01, top_n=3):
+    tissues = sim_gene_age_dict.keys()
+    top_n_genes_by_tissue_by_age = {}
+    for tissue in tissues:
+        ages = sim_gene_age_dict[tissue].keys()
+        top_n_genes_by_tissue_by_age[tissue] = {}
+        for age in ages:
+            genes = sim_gene_age_dict[tissue][age].keys()
+            top_n_genes = {}
+            for gene in genes:
+                sims = sim_gene_age_dict[tissue][age][gene]
+                if len(sims) >= (threshold * age_counts_for_tissue[tissue][age]):
+                    top_n_genes[gene] = np.mean(sims)
+            top_n_genes_by_tissue_by_age[tissue][age] = dict(sorted(top_n_genes.items(), key=lambda item: item[1], reverse=True)[:top_n])
+    return top_n_genes_by_tissue_by_age
+
+def plot_clock_tissue(tissue,tissue_gene_dict, save_svg=False):
+    sizes = [1] * 8  
+    labels = ["20y","30y","40y","50y","60y","70y","80y","10y"]
+    annotations = [f'Description for {i + 1}' for i in range(8)]  # Example annotations
+    age_groups = ["10-20","20-30","30-40","40-50","50-60","60-70","70-80",">80"]
+    gene_list = []
+    for age_group in age_groups:
+        if age_group in tissue_gene_dict[tissue]:
+            genes = tissue_gene_dict[tissue][age_group]
+            gene_list.append('\n'.join(genes))  # Join the genes for the current age group
+        else:
+            gene_list.append("")
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    fig.patch.set_alpha(0) 
+    ax.pie(sizes,  labels = gene_list,startangle=90, counterclock=False, colors=sns.color_palette('Set2'))
+    centre_circle = plt.Circle((0, 0), 0.70, fc='white')
+    fig.gca().add_artist(centre_circle)
+    ax.axis('equal')
+    theta = np.linspace(0, 2 * np.pi, len(sizes) + 1)[1:]  # Angles for each hour
+    for i in range(len(sizes)):
+        angle = -(theta[i] - np.pi/2)
+        x_label = 0.6 * np.cos(angle)  # X-coordinate for label
+        y_label = 0.6 * np.sin(angle)  # Y-coordinate for label
+        ax.text(x_label, y_label, labels[i], ha='center', va='center', fontsize=12,)
+    ax.text(0, 0, tissue, ha='center', va='center', fontsize=16, fontweight='bold')
+    return fig
+
