@@ -7,9 +7,8 @@ import scanpy as sc
 import numpy as np
 import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy.stats import pearsonr
 import pandas as pd
-from scipy.stats import ttest_ind, zscore
+from scipy.stats import ttest_ind, zscore, pearsonr
 
 
 def label_to_float(label):
@@ -35,10 +34,8 @@ def label_to_float(label):
 def cal_z_score(ground_truth, predictions, cal_r = True):
     r = None
     if cal_r:
-        # Calculate Pearson correlation
         r, _ = pearsonr(ground_truth, predictions)
 
-    # Calculate the z-scored age gap - (age gap - mean of age gap)/sd of age gap
     age_gap = predictions - ground_truth
     z_scored_age_gap = zscore(age_gap)
 
@@ -52,13 +49,15 @@ def cal_z_score(ground_truth, predictions, cal_r = True):
 def cal_cosine_sim(matrixA, matrixB=None, format="pairweise"): # choose from pariweise, general
     # calculate pairweise cosine similarity, e.g. one cell's cell type embedding with its own age embedding
     similarity_matrix = cosine_similarity(matrixA, matrixB)
-    if matrixB is None:
+    if matrixB is None and format == "half": # to compute variance innerhalb each age group
         return similarity_matrix[np.tril_indices_from(similarity_matrix, k = -1)]
-    elif format == "pairweise":
+    elif format == "pairweise": # e.g. for the case to compare cell type embedding corresponding to its age embedding, thus one similarity value for each cell
         assert matrixA.shape == matrixB.shape
         return np.diag(similarity_matrix)
-    elif format == "general":
+    elif format == "general": # e.g. for the case to get cosine similarity of gene embeddings in each age group, thus similarity values for each sample in A == number of samples in B
         return similarity_matrix.flatten()
+    else:
+        return
 
 def p_2_sign(p):
     """Convert p-value to significance markers."""
@@ -72,22 +71,22 @@ def p_2_sign(p):
         return ''
 
 def cal_p(lst1, lst2, stars = True):
-    t_stat, p_value = ttest_ind(lst1, lst2, equal_var=False)
+    t_stat, p_value = ttest_ind(lst1, lst2, equal_var=False) # weich t-test bc unequal sample sizes
     if stars:
         return p_2_sign(p_value)
     else:
         return p_value
     
 
-def cal_sim_between_two(matrix_gt, matrix_ref=None, age_group_list=None, ref_age_group_list = None,#for gene-gene, situations like the shape of two gene embs are diff, thus age lists are diff as well
+def cal_sim_between_two(matrix_gt, matrix_ref=None, age_group_list=None, ref_age_group_list = None, # just for gene-gene similarity, diff. age lists for each gene
                         age_order = None, by_age_group = True, format="pairweise", ref_same=False):
     if format == "pairweise":
         assert matrix_gt.shape == matrix_ref.shape
     assert matrix_gt.shape[0] == len(age_group_list)
     if by_age_group:
-        assert age_group_list is not None, "age_group_list cannot be None when by_age_group is True"
+        assert age_group_list is not None, "need the list of ages"
         sims_by_age = {}
-        if ref_same:
+        if ref_same: # always same reference matrix, e.g. for the case compare embeddings of each group always to the youngest group
             for age_group in age_order:
                 indices = [index for index, label in enumerate(age_group_list) if label == age_group]
                 # if format == "general": geneA to youngest group
@@ -101,7 +100,7 @@ def cal_sim_between_two(matrix_gt, matrix_ref=None, age_group_list=None, ref_age
             for age_group in age_order:
                 indices = [index for index, label in enumerate(age_group_list) if label == age_group]
                 if matrix_ref is None:
-                    similarities = cal_cosine_sim(matrix_gt[indices], None, format="general") # to cal inner each age group gene embedding variance
+                    similarities = cal_cosine_sim(matrix_gt[indices], None, format=format) # to cal inner each age group gene embedding variance
                 else:
                     # if format == "pairweise": the most used one, gene-age,tissue-age, cell_type-age
                     # if format == "general": geneA to geneB
@@ -117,7 +116,7 @@ def cal_sim_between_two(matrix_gt, matrix_ref=None, age_group_list=None, ref_age
                 sims_by_age[age_group] = similarities
             return sims_by_age
     else:
-        similarities = cal_cosine_sim(matrix_gt, matrix_ref, format="")
+        similarities = cal_cosine_sim(matrix_gt, matrix_ref, format=format) #common use cases
         return similarities
     
 def sim_gene_age(matrix_gene, matrix_age, age_group_list, age_order = None):
@@ -144,7 +143,7 @@ def sim_gene_youngest(matrix_gene, age_group_list, ref_age = None, age_order = N
 
 def sim_gene_each_group(matrix_gene, age_group_list, age_order = None):
     assert age_group_list is not None
-    return cal_sim_between_two(matrix_gene, matrix_ref=None, age_group_list = age_group_list, age_order=age_order, by_age_group = True, format="general")
+    return cal_sim_between_two(matrix_gene, matrix_ref=None, age_group_list = age_group_list, age_order=age_order, by_age_group = True, format="half")
 
 def top_n_genes_by_age(sim_gene_age_dict: dict, age_counts_for_tissue: dict, threshold=0.01, top_n=3):
     tissues = sim_gene_age_dict.keys()
@@ -162,16 +161,15 @@ def top_n_genes_by_age(sim_gene_age_dict: dict, age_counts_for_tissue: dict, thr
             top_n_genes_by_tissue_by_age[tissue][age] = dict(sorted(top_n_genes.items(), key=lambda item: item[1], reverse=True)[:top_n])
     return top_n_genes_by_tissue_by_age
 
-def plot_clock_tissue(tissue,tissue_gene_dict, save_svg=False):
+def plot_clock_tissue(tissue,tissue_gene_dict):
     sizes = [1] * 8  
     labels = ["20y","30y","40y","50y","60y","70y","80y","10y"]
-    annotations = [f'Description for {i + 1}' for i in range(8)]  # Example annotations
     age_groups = ["10-20","20-30","30-40","40-50","50-60","60-70","70-80",">80"]
     gene_list = []
     for age_group in age_groups:
         if age_group in tissue_gene_dict[tissue]:
             genes = tissue_gene_dict[tissue][age_group]
-            gene_list.append('\n'.join(genes))  # Join the genes for the current age group
+            gene_list.append('\n'.join(genes))  
         else:
             gene_list.append("")
 
@@ -181,11 +179,11 @@ def plot_clock_tissue(tissue,tissue_gene_dict, save_svg=False):
     centre_circle = plt.Circle((0, 0), 0.70, fc='white')
     fig.gca().add_artist(centre_circle)
     ax.axis('equal')
-    theta = np.linspace(0, 2 * np.pi, len(sizes) + 1)[1:]  # Angles for each hour
+    theta = np.linspace(0, 2 * np.pi, len(sizes) + 1)[1:] 
     for i in range(len(sizes)):
         angle = -(theta[i] - np.pi/2)
-        x_label = 0.6 * np.cos(angle)  # X-coordinate for label
-        y_label = 0.6 * np.sin(angle)  # Y-coordinate for label
+        x_label = 0.6 * np.cos(angle) 
+        y_label = 0.6 * np.sin(angle)  
         ax.text(x_label, y_label, labels[i], ha='center', va='center', fontsize=12,)
     ax.text(0, 0, tissue, ha='center', va='center', fontsize=16, fontweight='bold')
     return fig
