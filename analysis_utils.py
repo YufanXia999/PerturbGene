@@ -188,3 +188,19 @@ def plot_clock_tissue(tissue,tissue_gene_dict):
     ax.text(0, 0, tissue, ha='center', va='center', fontsize=16, fontweight='bold')
     return fig
 
+def replace_innermost_keys(d, key_map):
+    """
+    Recursively replace multiple keys in the innermost level of a nested dictionary.
+
+    :param d: The dictionary to process.
+    :param key_map: A dictionary where keys are the old keys to replace and values are the new keys.
+    :return: The updated dictionary.
+    """
+    updated_dict = {}
+    for key, value in d.items():
+        if isinstance(value, dict):
+            updated_dict[key] = replace_innermost_keys(value, key_map)
+        else:
+            new_key_to_use = key_map.get(key, key)
+            updated_dict[new_key_to_use] = value
+    return updated_dict
