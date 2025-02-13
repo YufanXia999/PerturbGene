@@ -179,3 +179,4 @@ cache/
 *.h5ad
 /checkpoints/
 configs/credentials.json
+configs/credentials.json
